@@ -1,7 +1,7 @@
 // import modules
 
 import http from 'node:http'
-import { readFile, appendFile } from 'node:fs/promises'
+import { mkdir, readFile, appendFile } from 'node:fs/promises'
 import { EOL } from 'node:os'
 import { getDateTime } from './libs/Util.mjs'
 import FileManager from './libs/FileManager.mjs'
@@ -63,13 +63,15 @@ server.on('request', async (request, response) => {
   }
 
   const message = `[${ getDateTime() }] ${ client }: ${ request.url } ${ response.statusCode }`
-  appendFile('access.log', message + EOL, { encoding: 'utf8', mode: 0o644 })
+  appendFile('logs/access.log', message + EOL, { encoding: 'utf8', mode: 0o644 })
 
 })
 
 
 // start server
 
-server.listen(config.port, () => {
-  console.log(`[${ getDateTime() }] server: start listening on http://${ config.host }:${ config.port }`)
+server.listen(config.port, async () => {
+  const message = `[${ getDateTime() }] server: start listening on http://${ config.host }:${ config.port }`
+  await mkdir('logs', { recoursive: true, mode: 0o755 })
+  appendFile('logs/access.log', message + EOL, { encoding: 'utf8', mode: 0o644 })
 })
