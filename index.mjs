@@ -72,6 +72,6 @@ server.on('request', async (request, response) => {
 
 server.listen(config.port, async () => {
   const message = `[${ getDateTime() }] server: start listening on http://${ config.host }:${ config.port }`
-  await mkdir('logs', { recoursive: true, mode: 0o755 })
+  try { await mkdir('logs', { recoursive: true, mode: 0o755 }) } catch {}
   appendFile('logs/access.log', message + EOL, { encoding: 'utf8', mode: 0o644 })
 })
