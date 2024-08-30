@@ -2,7 +2,6 @@
 
 import http from 'node:http'
 import { EOL } from 'node:os'
-import { exit } from 'node:process'
 import { mkdir, readFile, appendFile } from 'node:fs/promises'
 
 import Client from './core/Client.mjs'
