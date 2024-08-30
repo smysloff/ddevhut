@@ -1,8 +1,12 @@
 // import modules
 
 import http from 'node:http'
-import { mkdir, readFile, appendFile } from 'node:fs/promises'
 import { EOL } from 'node:os'
+import { exit } from 'node:process'
+import { mkdir, readFile, appendFile } from 'node:fs/promises'
+
+import Client from './core/Client.mjs'
+
 import { getDateTime } from './libs/Util.mjs'
 import FileManager from './libs/FileManager.mjs'
 
@@ -22,6 +26,7 @@ for await (const line of FileManager.readFile('.env')) {
     case 'port': config.port = parseInt(value); break;
   }
 }
+config.hosts = [config.host, `${ config.host }:${ config.port }`]
 
 
 // load views into memory
@@ -34,15 +39,18 @@ const pages = new Map(Object.entries({
   '/contacts': await readFile('views/contacts.html'),
 }))
 
+const tools = new Map(Object.entries({
+  myip: await readFile('views/tools/myip.html')
+}))
+
 
 // server request handler
 
 server.on('request', async (request, response) => {
 
-  const address = request.socket.remoteAddress.split(':').pop()
-  const client = address.length > 1 ? address : '127.0.0.1'
+  const client = new Client(request)
 
-  if (![config.host, `${ config.host }:${ config.port }`].includes(request.headers.host)) {
+  if (!config.hosts.includes(client.host)) {
     let location = new URL(request.url, `http://${ config.host }:${ config.port }`)
     response.writeHead(308, { Location: `${ location }` })
     response.end()
@@ -53,16 +61,24 @@ server.on('request', async (request, response) => {
       response.end(pages.get(request.url))
     } else if (request.url === '/tools/myip') {
       response.statusCode = 200
-      response.setHeader('Content-Type', 'text/plain')
-      response.end(client)
-    }else {
+      if (client.isBrowser) {
+        let html = tools.get('myip')
+          .toString()
+          .replace(/{{\s*ip\s*}}/, client.ip)
+        response.setHeader('Content-Type', 'text/html')
+        response.end(html)
+      } else {
+        response.setHeader('Content-Type', 'text/plain')
+        response.end(client.ip)
+      }
+    } else {
       response.statusCode = 404
       response.setHeader('Content-Type', 'text/plain')
       response.end('Error 404: Page Not Found')
     }
   }
 
-  const message = `[${ getDateTime() }] ${ client }: ${ request.url } ${ response.statusCode }`
+  const message = `[${ getDateTime(client.time) }] ${ client.ip }: ${ response.statusCode } ${ client.host } ${ client.url } "${ client.userAgent }"`
   appendFile('logs/access.log', message + EOL, { encoding: 'utf8', mode: 0o644 })
 
 })
