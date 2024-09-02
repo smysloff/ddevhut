@@ -23,6 +23,7 @@ for await (const line of FileManager.readFile('.env')) {
   switch (key) {
     case 'host': config.host = value; break
     case 'port': config.port = parseInt(value); break;
+    case 'prod': config.prod = value === 'true';
   }
 }
 config.hosts = [config.host, `${ config.host }:${ config.port }`]
@@ -78,7 +79,11 @@ server.on('request', async (request, response) => {
   }
 
   const message = `[${ getDateTime(client.time) }] ${ client.ip }: ${ response.statusCode } ${ client.host } ${ client.url } "${ client.userAgent }"`
-  appendFile('logs/access.log', message + EOL, { encoding: 'utf8', mode: 0o644 })
+  if (config.prod) {
+    appendFile(`logs/${ getDateTime(client.time, '%y_%m_%d') }_access.log`, message + EOL, { encoding: 'utf8', mode: 0o644 })
+  } else {
+    console.log(message)
+  }
 
 })
 
@@ -87,6 +92,10 @@ server.on('request', async (request, response) => {
 
 server.listen(config.port, async () => {
   const message = `[${ getDateTime() }] server: start listening on http://${ config.host }:${ config.port }`
-  try { await mkdir('logs', { recoursive: true, mode: 0o755 }) } catch {}
-  appendFile('logs/access.log', message + EOL, { encoding: 'utf8', mode: 0o644 })
+  if (config.prod) {
+    try { await mkdir('logs', { recoursive: true, mode: 0o755 }) } catch {}
+    appendFile(`logs/${ getDateTime('%y_%m_%d') }_access.log`, message + EOL, { encoding: 'utf8', mode: 0o644 })
+  } else {
+    console.log(message)
+  }
 })
