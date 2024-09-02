@@ -22,8 +22,8 @@ for await (const line of FileManager.readFile('.env')) {
   const [key, value] = line.split('=')
   switch (key) {
     case 'host': config.host = value; break
-    case 'port': config.port = parseInt(value); break;
-    case 'prod': config.prod = value === 'true';
+    case 'port': config.port = parseInt(value); break
+    case 'prod': config.prod = value === 'true'; break
   }
 }
 config.hosts = [config.host, `${ config.host }:${ config.port }`]
