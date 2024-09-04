@@ -12,7 +12,6 @@ export default class HttpServer {
 
   set staticDir(dirname) {
     this.#staticDir = dirname
-    this.#router.staticDir = dirname
   }
 
   get staticDir() {
@@ -41,9 +40,9 @@ export default class HttpServer {
 
   async listen(port) {
     await this.#loadConfig(this.#configFile)
-    await this.#router.loadRoutes()
+    //await this.#router.loadRoutes()
     this.#server.on('request', async (request, response) => {
-      const controller = await this.#router.dispatch(request.url)
+      const controller = this.#router.dispatch(request.url)
       controller(request, response)
     })
     this.#server.listen(port ?? this.#config.port)
@@ -53,29 +52,3 @@ export default class HttpServer {
     this.#router.get(url, callback)
   }
 }
-
-function homeController(request, response) {
-  response.statusCode = 200
-  response.setHeader('Content-Type', 'text/plain')
-  response.end('Home Controller')
-}
-
-function blogListController(request, response) {
-  response.statusCode = 200
-  response.setHeader('Content-Type', 'text/plain')
-  response.end('BlogList Controller')
-}
-
-function blogArticleController(request, response, ...args) {
-  response.statusCode = 200
-  response.setHeader('Content-Type', 'text/plain')
-  response.end(`BlogArticle Controller: id - ${ args?.id }, name - ${ args?.name }`)
-}
-
-const app = new HttpServer()
-//app.configFile = '.env'
-//app.staticDir = 'public'
-app.get('/', homeController)
-app.get('/blog', blogListController)
-app.get('/blog/{id}/{name}', blogArticleController)
-app.listen()

@@ -1,7 +1,7 @@
 import { open } from 'node:fs/promises'
 import { extname } from 'node:path'
 
-class HttpRouter {
+export default class HttpRouter {
 
   #routes = new Map()
 
@@ -97,18 +97,3 @@ class HttpRouter {
   }
 
 }
-
-const router = new HttpRouter()
-
-router.get('/', () => 'home page')
-router.get('/blog', () => 'blog index')
-router.get('/blog/{id}/{name}', (request, response, params) => {
-  if (params.id > 3) {
-    return router.error(404)
-  }
-  return `blog post: id - ${ params.id }, name - ${ params.name }`
-})
-
-const controller = router.dispatch('/blog/4/title')
-
-console.log( controller(request, response) )
