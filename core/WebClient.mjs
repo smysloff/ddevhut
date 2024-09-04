@@ -1,4 +1,4 @@
-export default class Client {
+export default class WebClient {
   constructor(request) {
     const address = request.socket.remoteAddress.split(':').pop()
     this.ip = address.length > 1 ? address : '127.0.0.1'

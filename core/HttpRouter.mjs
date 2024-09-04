@@ -1,9 +1,9 @@
-import { open, opendir, lstat } from 'node:fs/promises'
-import { join, extname } from 'node:path'
+import { open } from 'node:fs/promises'
+import { extname } from 'node:path'
 
-export default class HttpRouter {
+class HttpRouter {
 
-  #staticDir = 'public'
+  #routes = new Map()
 
   #mimeTypes = new Map(Object.entries({
     bmp:     'image/bmp',
@@ -40,49 +40,75 @@ export default class HttpRouter {
     woff:    'font/woff',
   }))
 
-  #routes = new Map()
+  get(route, callback) {
+    this.#routes.set(route, callback)
+    return this
+  }
 
-  async #loadStaticDir(dirname) {
+  static(route, filename) {
+    const callback = async (_, response) => {
+      const extension = extname(filename).slice(1)
+      const contentType = this.#mimeTypes.get(extension)
+      const fileHandle = await open(filename)
+      const stream = fileHandle.createReadStream()
 
-    for await (const entity of await opendir(dirname)) {
-      const dirent = join(dirname, entity.name)
-      const stat = await lstat(dirent)
-      if (stat.isFile()) {
-        const url = dirent.replace(this.#staticDir, '')
-          .replace('index.html', '/')
-          .replace('//', '/')
-          .replace(/(.+)\/$/, '$1')
-          .replace('.html', '')
-        const callback = async (_, response) => {
-          const extension = extname(dirent)?.slice(1)
-          const contentType = this.#mimeTypes.get(extension)
-          const fh = await open(dirent)
-          const stream = fh.createReadStream()
-          response.statusCode = 200
-          response.setHeader('Content-Type', contentType)
-          stream.pipe(response)
-        }
-        this.#routes.set(url, callback)
+      response.statusCode = 200
+      response.setHeader('Content-Type', contentType)
+      stream.pipe(response)
+    }
+    this.#routes.set(route, callback)
+    return this
+  }
+
+  dispatch(url) {
+    for (const [route, callback] of this.#routes) {
+      const regexp = this.#getRegexpFromRoute(route)
+      const matches = url.match(regexp)
+      if (matches) {
+        const params = this.#getParamsFromRoute(route, matches)
+        return (request, response) => callback(request, response, params)
       }
-      if (stat.isDirectory()) {
-        await this.#loadStaticDir(dirent)
+    }
+    return () => this.error(404)
+  }
+
+  error(code) {
+    switch (code) {
+      case 404: return (_, response) => {
+        response.statusCode = 404
+        response.setHeader('Content-Type', 'text/plain')
+        response.end('Error 404: Page not Found')
       }
     }
-
   }
 
-  async loadRoutes() {
-    await this.#loadStaticDir(this.#staticDir)
+  #getRegexpFromRoute(route) {
+    const regexp = route.replaceAll(/\{.+?\}/gui, '(.+?)')
+    return new RegExp(`^${ regexp }$`, 'ui')
   }
 
-  async dispatch(url) {
-    if (this.#routes.has(url)) {
-      return this.#routes.get(url)
-    }
-    return (_, response) => { 
-      response.statusCode = 404
-      response.setHeader('Content-Type', 'text/plain')
-      response.end('Error 404: Page Not Found')
-    }
+  #getParamsFromRoute(route, matches) {
+    const keys = [...route.matchAll(/\{(.+?)\}/gui)].map(match => match[1])
+    const values = [...matches.slice(1)]
+    return keys.reduce((acc, key, index) => {
+      acc[key] = values[index]
+      return acc
+    }, {})
   }
+
 }
+
+const router = new HttpRouter()
+
+router.get('/', () => 'home page')
+router.get('/blog', () => 'blog index')
+router.get('/blog/{id}/{name}', (request, response, params) => {
+  if (params.id > 3) {
+    return router.error(404)
+  }
+  return `blog post: id - ${ params.id }, name - ${ params.name }`
+})
+
+const controller = router.dispatch('/blog/4/title')
+
+console.log( controller(request, response) )

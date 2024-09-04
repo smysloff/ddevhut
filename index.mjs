@@ -4,7 +4,7 @@ import http from 'node:http'
 import { EOL } from 'node:os'
 import { mkdir, readFile, appendFile } from 'node:fs/promises'
 
-import Client from './core/Client.mjs'
+import WebClient from './core/WebClient.mjs'
 
 import { getDateTime } from './libs/Util.mjs'
 import FileManager from './libs/FileManager.mjs'
@@ -48,7 +48,7 @@ const tools = new Map(Object.entries({
 
 server.on('request', async (request, response) => {
 
-  const client = new Client(request)
+  const client = new WebClient(request)
 
   if (!config.hosts.includes(client.host)) {
     let location = new URL(request.url, `http://${ config.host }:${ config.port }`)
