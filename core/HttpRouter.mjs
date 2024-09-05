@@ -1,44 +1,10 @@
 import { open } from 'node:fs/promises'
 import { extname } from 'node:path'
+import MimeTypes from '../libs/MimeTypes.mjs'
 
 export default class HttpRouter {
 
   #routes = new Map()
-
-  #mimeTypes = new Map(Object.entries({
-    bmp:     'image/bmp',
-    css:     'text/css',
-    csv:     'text/csv',
-    eot:     'application/vnd.ms-fontobject',
-    gif:     'image/gif',
-    htm:     'text/html',
-    html:    'text/html',
-    ico:     'image/vnd.microsoft.icon',
-    jpeg:    'image/jpeg',
-    jpg:     'image/jpeg',
-    js:      'text/javascript',
-    json:    'application/json',
-    jsonld:  'application/ld+json',
-    jsonp:   'application/javascript',
-    mjs:     'text/javascript',
-    mp3:     'audio/mpeg',
-    mp4:     'video/mp4',
-    ogg:     'audio/ogg',
-    otf:     'font/otf',
-    pdf:     'application/pdf',
-    png:     'image/png',
-    rar:     'application/x-rar-compressed',
-    svg:     'image/svg+xml',
-    tar:     'application/x-tar',
-    ttf:     'font/ttf',
-    txt:     'text/plain',
-    wav:     'audio/wav',
-    webp:    'image/webp',
-    woff2:   'font/woff2',
-    xml:     'application/xml',
-    zip:     'application/zip',
-    woff:    'font/woff',
-  }))
 
   get(route, callback) {
     this.#routes.set(route, callback)
@@ -48,7 +14,7 @@ export default class HttpRouter {
   static(route, filename) {
     const callback = async (_, response) => {
       const extension = extname(filename).slice(1)
-      const contentType = this.#mimeTypes.get(extension)
+      const contentType = MimeTypes.get(extension)
       const fileHandle = await open(filename)
       const stream = fileHandle.createReadStream()
 
@@ -62,14 +28,14 @@ export default class HttpRouter {
 
   dispatch(url) {
     for (const [route, callback] of this.#routes) {
-      const regexp = this.#getRegexpFromRoute(route)
+      const regexp = this.#getRegExpFromRoute(route)
       const matches = url.match(regexp)
       if (matches) {
         const params = this.#getParamsFromRoute(route, matches)
         return (request, response) => callback(request, response, params)
       }
     }
-    return () => this.error(404)
+    return this.error(404)
   }
 
   error(code) {
@@ -82,7 +48,7 @@ export default class HttpRouter {
     }
   }
 
-  #getRegexpFromRoute(route) {
+  #getRegExpFromRoute(route) {
     const regexp = route.replaceAll(/\{.+?\}/gui, '(.+?)')
     return new RegExp(`^${ regexp }$`, 'ui')
   }
