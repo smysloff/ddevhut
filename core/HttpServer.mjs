@@ -17,29 +17,14 @@ export default class HttpServer {
   }
 
   async listen(port) {
+
     if (this.configFile) {
       const filename = join(cwd(), this.configFile)
       await this.config.load(filename)
     }
 
     if (this.staticDir) {
-      async function serveFilesFromDir(dirname) {
-        for await (const dirent of await opendir(dirname)) {
-          const entity = join(dirname, dirent.name)
-          const stat = await lstat(entity)
-          if (stat.isFile()) {
-            const filename = entity.replace(/index\.html$/, '')
-                                   .replace(/\.html$/, '')
-                                   .replace(/\/\//, '/')
-            console.log(entity, '|', filename)
-          }
-          if (stat.isDirectory()) {
-            await serveFilesFromDir(entity)
-          }
-        }
-      }
-
-      await serveFilesFromDir(this.staticDir)
+      await this.#serveFilesFromDir(this.staticDir)
     }
 
     this.#server.on('request', (request, response) => {
@@ -48,5 +33,31 @@ export default class HttpServer {
     })
 
     this.#server.listen(port ?? this.config.port)
+
   }
+
+  async #serveFilesFromDir(dirname) {
+
+    for await (const dirent of await opendir(dirname)) {
+
+      const filename = join(dirname, dirent.name)
+      const stat = await lstat(filename)
+
+      if (stat.isFile()) {
+        const route = filename.replace(this.staticDir, '')
+                              .replace(/index\.html$/, '/')
+                              .replace(/\/\//, '/')
+                              .replace(/^(.+)\/$/, '$1')
+                              .replace(/\.html$/, '')
+        this.router.static(route, filename)
+      }
+
+      if (stat.isDirectory()) {
+        await this.#serveFilesFromDir(filename)
+      }
+
+    }
+
+  }
+
 }

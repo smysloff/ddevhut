@@ -5,10 +5,13 @@ const app = new HttpServer()
 app.configFile = '.env'
 app.staticDir = 'public'
 
-app.router.get('/', (_, response) => {
+app.router.get('/tools/myip', (request, response) => {
+
+  console.log(request)
+
   response.statusCode = 200
   response.setHeader('Content-Type', 'text/plain')
-  response.end('home page')
+  response.end('MyIP Tool')
 })
 
 app.listen()

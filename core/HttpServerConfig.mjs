@@ -9,8 +9,8 @@ export default class HttpServerConfig {
   }
 
   async load(filename) {
-    const fh = await open(filename)
-    for await (const line of fh.readLines({ encoding: 'utf8' })) {
+    const fileHandle = await open(filename)
+    for await (const line of fileHandle.readLines({ encoding: 'utf8' })) {
       const [key, value] = line.split('=')
       switch (key) {
         case 'port': this[key] = parseInt(value); break
